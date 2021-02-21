@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Introducing to WebRTC</title>
+    <link rel="stylesheet" type="text/css" href="styles.css">
+</head>
+<body>
+
+<div id="camaraSelector">
+    Video: <select id="camera"></select>
+</div>
+
+<p>
+    <button id="takeProfilePicture" type="button" autofocus="true">Create Profile Picture</button>
+</p>
+
+<video id="videoTag" autoplay></video>
+
+<canvas id="ProfilePicCanvas" style="display: none"></canvas>
+
+<div>
+    <img id="profilePictureOutput">
+</div>
+
+
+<script>
+
+    let videoArea = document.querySelector('video')
+    let videoSelect = document.querySelector('#camera')
+    let profilePicCanvas = document.querySelector('#profilePicCanvas')
+    let profilePictureOutput = document.querySelector('#profilePictureOutput')
+    let takePicButton = document.querySelector('#takeProfilePicture')
+    let videoTag = document.querySelector('#videoTag')
+
+    let width = 240;
+    let height = 0;
+    let streaming = false
+
+
+    takePicButton.addEventListener('click', evt => {
+        takeProfilePic()
+        evt.preventDefault()
+    }, false)
+
+    videoTag.addEventListener('canplay', evt => {
+        if (!streaming) {
+            height = videoTag.videoHeight / (videoTag.videoWidth / width);
+            if (isNaN(height)) {
+                height = width / (4 / 3)
+            }
+        }
+
+        videoTag.setAttribute('width', width)
+        videoTag.setAttribute('height', height)
+        profilePicCanvas.setAttribute('width', width)
+        profilePicCanvas.setAttribute('height', height)
+        streaming = true;
+    })
+
+    function takeProfilePic() {
+        let context = profilePicCanvas.getContext('2d')
+        if (width && height) {
+            profilePicCanvas.width = width;
+            profilePicCanvas.height = height;
+            context.drawImage(videoTag, 0, 0, width, height)
+
+            let data = profilePicCanvas.toDataURL('image/png');
+            profilePictureOutput.setAttribute('src', data)
+        }
+    }
+
+   videoSelect.onchange = startStream()
+    // startStream()
+
+    function startStream() {
+
+        let videoSource = videoSelect.value
+        const constraints = {
+            audio: false,
+            video: {
+                mandatory: {
+                    minWidth: 640,
+                    maxWidth: 640,
+                    minHeight: 360,
+                    maxHeight: 480
+                },
+                optional: [{
+                    sourceId: videoSource
+                }]
+
+            }
+        }
+        getMedia(constraints)
+    }
+
+    navigator.mediaDevices.enumerateDevices()
+        .then(function (devices) {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+                console.log("enumerateDevices() not supported.");
+                return;
+            }
+
+            devices.forEach((device) => {
+                let option = document.createElement('option');
+                option.value = device.deviceId;
+                if (device.kind === 'videoinput') {
+                    option.text = device.label || 'camera' + (videoSelect.length + 1);
+                    videoSelect.appendChild(option)
+                }
+            });
+
+        })
+        .catch(err => {
+            console.log(err.name + ':' + err.message)
+        })
+
+
+    async function getMedia(constraints) {
+        try {
+            console.log('Trying to make a stream')
+            let stream = null;
+            stream = await navigator.mediaDevices.getUserMedia(constraints);
+            console.log('Success! We have a stream', stream)
+            videoArea.srcObject = stream;
+            console.log(videoArea.srcObject)
+            videoArea.className = 'grayscale_filter'
+            videoArea.play();
+        } catch (err) {
+            console.log('Error with getUserMedia', err)
+        }
+    }
+
+</script>
+
+</body>
+</html>
